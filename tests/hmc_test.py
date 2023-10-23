@@ -4,7 +4,7 @@ from jax import random
 
 from rmhmc.hmc import hmc
 
-from .problems import banana
+from problems import banana
 
 
 def test_divergence() -> None:

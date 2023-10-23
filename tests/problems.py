@@ -5,6 +5,7 @@ from typing import Callable, Tuple
 import jax.numpy as jnp
 import numpy as np
 from jax.flatten_util import ravel_pytree
+import jax.scipy.stats as jss
 
 from rmhmc.base_types import (
     Array,
@@ -30,7 +31,7 @@ def sho(use_euclidean: bool) -> System:
 
 def planet(use_euclidean: bool) -> System:
     def log_posterior(q: Position) -> Scalar:
-        return 1.0 / jnp.sqrt(jnp.sum(q ** 2))
+        return 1.0 / jnp.sqrt(jnp.sum(q**2))
 
     def metric(q: Position) -> Array:
         return jnp.diag(jnp.ones_like(q))
@@ -40,9 +41,9 @@ def planet(use_euclidean: bool) -> System:
     return riemannian(log_posterior, metric)
 
 
-def banana_logprob_and_metric() -> Tuple[
-    PotentialFunction, Callable[[Position], Array]
-]:
+def banana_logprob_and_metric() -> (
+    Tuple[PotentialFunction, Callable[[Position], Array]]
+):
     t = 0.5
     sigma_y = 2.0
     sigma_theta = 2.0
@@ -58,20 +59,20 @@ def banana_logprob_and_metric() -> Tuple[
 
     def log_posterior(q: Position) -> Scalar:
         p = q[0] + jnp.square(q[1])
-        ll = jnp.sum(jnp.square(y - p)) / sigma_y ** 2
-        lp = jnp.sum(jnp.square(theta)) / sigma_theta ** 2
+        ll = jnp.sum(jnp.square(y - p)) / sigma_y**2
+        lp = jnp.sum(jnp.square(theta)) / sigma_theta**2
         return -0.5 * (ll + lp)
 
     def metric(q: Position) -> Array:
         n = y.size
-        s = 2.0 * n * q[1] / sigma_y ** 2
+        s = 2.0 * n * q[1] / sigma_y**2
         return jnp.array(
             [
-                [n / sigma_y ** 2 + 1.0 / sigma_theta ** 2, s],
+                [n / sigma_y**2 + 1.0 / sigma_theta**2, s],
                 [
                     s,
-                    4.0 * n * jnp.square(q[1]) / sigma_y ** 2
-                    + 1.0 / sigma_theta ** 2,
+                    4.0 * n * jnp.square(q[1]) / sigma_y**2
+                    + 1.0 / sigma_theta**2,
                 ],
             ]
         )
@@ -86,6 +87,52 @@ def banana(fixed: bool, use_euclidean: bool) -> System:
 
         def metric(__q: Position) -> Array:
             return 10 * jnp.diag(jnp.ones_like(__q))
+
+    else:
+        metric = metric_
+
+    if fixed and use_euclidean:
+        return euclidean(log_posterior)
+    return riemannian(log_posterior, metric)
+
+
+def funnel_logprob_and_metric() -> (
+    Tuple[PotentialFunction, Callable[[Position], Array]]
+):
+    sigma = 3.0
+    D = int(2.0)
+
+    def log_posterior(theta: Position) -> Scalar:
+        return jss.norm.logpdf(theta[D - 1], loc=0.0, scale=sigma) + jnp.sum(
+            jss.norm.logpdf(
+                theta[: D - 1], loc=0.0, scale=jnp.exp(0.5 * theta[D - 1])
+            )
+        )
+
+    def metric(theta: Position) -> Array:
+        def inverse_jacobian(theta: Position) -> Array:
+            upper_rows = jnp.c_[
+                jnp.exp(-0.5 * theta[-1]) * jnp.eye(D - 1),
+                -0.5 * jnp.exp(-0.5 * theta[-1]) * theta[0 : (D - 1)],
+            ]
+            lowest_row = jnp.append(jnp.zeros(D - 1), 1.0 / sigma)
+            inverse_jacobian = jnp.r_[upper_rows, [lowest_row]]
+            return inverse_jacobian
+
+        inverse_jacobian = inverse_jacobian(theta)
+        metric = inverse_jacobian.T @ inverse_jacobian
+        return 0.5 * (metric + metric.T)
+
+    return log_posterior, metric
+
+
+def funnel(fixed: bool, use_euclidean: bool) -> System:
+    log_posterior, metric_ = funnel_logprob_and_metric()
+
+    if fixed:
+
+        def metric(__q: Position) -> Array:
+            return 1 * jnp.diag(jnp.ones_like(__q))
 
     else:
         metric = metric_

@@ -3,6 +3,7 @@
 __all__ = ["hamiltonian", "hmc", "integrator", "sampling"]
 
 from . import hamiltonian, hmc, integrator, sampling
+
 from .rmhmc_version import __version__  # noqa
 
 __uri__ = "https://github.com/dfm/rmhmc"

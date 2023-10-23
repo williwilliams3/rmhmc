@@ -8,7 +8,7 @@ from jax import lax, random
 from rmhmc.base_types import Array, Momentum
 from rmhmc.hamiltonian import euclidean, riemannian
 
-from .problems import banana_logprob_and_metric
+from problems import banana_logprob_and_metric
 
 L = np.random.default_rng(9).normal(size=(5, 5))
 L[np.diag_indices_from(L)] = np.exp(L[np.diag_indices_from(L)])
@@ -26,7 +26,7 @@ L[np.triu_indices_from(L, 1)] = 0.0
 )
 def test_sample_momentum_euclidean(cov: Array) -> None:
     ndim = cov.shape[0]
-    system = euclidean(lambda x: 0.5 * jnp.sum(x ** 2), cov=cov)
+    system = euclidean(lambda x: 0.5 * jnp.sum(x**2), cov=cov)
     kinetic_state = system.kinetic_tune_init(ndim)
 
     def _sample(

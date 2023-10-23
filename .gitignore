@@ -1,2 +1,7 @@
 *_version.py
 *.ipynb
+build/
+__pycache__/
+*.egg-info/
+*.egg
+.vscode/

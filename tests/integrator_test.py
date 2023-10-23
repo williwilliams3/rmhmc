@@ -18,7 +18,7 @@ from rmhmc.hamiltonian import (
 )
 from rmhmc.integrator import IntegratorState
 
-from .problems import PROBLEMS, banana
+from problems import PROBLEMS, banana
 
 
 def run(
